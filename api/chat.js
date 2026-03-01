@@ -16,14 +16,19 @@ export default async function handler(req) {
     const body = await req.json();
     const { type, prompt, generationConfig, searchQuery, niche } = body;
 
-    // ── REDDIT SEARCH via SerpApi ─────────────────────────────────────────
+    // ── REDDIT SEARCH via SerpApi + cx ────────────────────────────────────
     if (type === 'reddit_search') {
       const SERP_KEY = process.env.SERP_API_KEY;
+      const CX = process.env.GOOGLE_CX;
 
       if (!SERP_KEY) {
         return new Response(JSON.stringify({ error: 'SerpApi not configured' }), { status: 500, headers });
       }
+      if (!CX) {
+        return new Response(JSON.stringify({ error: 'Search Engine ID not configured' }), { status: 500, headers });
+      }
 
+      // Multiple buying signal queries
       const queries = [
         `site:reddit.com ${searchQuery} looking for recommendations`,
         `site:reddit.com ${searchQuery} need help willing to pay`,
@@ -36,29 +41,38 @@ export default async function handler(req) {
 
       for (const q of queries) {
         try {
-          const serpUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(q)}&api_key=${SERP_KEY}&num=5&engine=google`;
+          // SerpApi with cx (Search Engine ID) for targeted Reddit search
+          const serpUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(q)}&api_key=${SERP_KEY}&cx=${CX}&num=5&engine=google`;
           const serpRes = await fetch(serpUrl);
           const serpData = await serpRes.json();
 
           if (serpData.organic_results) {
             for (const result of serpData.organic_results) {
-              if (result.link && result.link.includes('reddit.com') && !seenUrls.has(result.link)) {
+              if (
+                result.link &&
+                result.link.includes('reddit.com') &&
+                !seenUrls.has(result.link)
+              ) {
                 seenUrls.add(result.link);
 
                 // Extract subreddit from URL
                 const urlParts = result.link.split('/');
                 const rIdx = urlParts.indexOf('r');
-                const subreddit = rIdx > -1 && urlParts[rIdx + 1] ? `r/${urlParts[rIdx + 1]}` : 'r/entrepreneur';
+                const subreddit = rIdx > -1 && urlParts[rIdx + 1]
+                  ? `r/${urlParts[rIdx + 1]}`
+                  : 'r/entrepreneur';
 
-                // Extract username if available
+                // Extract username if in URL
                 const uIdx = urlParts.indexOf('u');
-                const username = uIdx > -1 && urlParts[uIdx + 1] ? urlParts[uIdx + 1] : `user_${Math.random().toString(36).substr(2, 8)}`;
+                const username = uIdx > -1 && urlParts[uIdx + 1]
+                  ? urlParts[uIdx + 1]
+                  : `u_${Math.random().toString(36).substr(2, 8)}`;
 
                 allResults.push({
                   username,
                   subreddit,
                   postTitle: result.title || 'Reddit Post',
-                  keyQuote: result.snippet || 'View post for details',
+                  keyQuote: result.snippet || 'View post for full details',
                   url: result.link,
                   postedAgo: result.date || 'recently'
                 });
@@ -66,6 +80,7 @@ export default async function handler(req) {
             }
           }
         } catch (e) {
+          // Continue with next query if one fails
           continue;
         }
       }
@@ -100,14 +115,20 @@ export default async function handler(req) {
     const data = await geminiRes.json();
 
     if (data.error) {
-      return new Response(JSON.stringify({ error: data.error.message, code: data.error.code }), { status: 200, headers });
+      return new Response(
+        JSON.stringify({ error: data.error.message, code: data.error.code }),
+        { status: 200, headers }
+      );
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     return new Response(JSON.stringify({ text }), { status: 200, headers });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Server error: ' + err.message }), { status: 500, headers });
+    return new Response(
+      JSON.stringify({ error: 'Server error: ' + err.message }),
+      { status: 500, headers }
+    );
   }
-    }
-                  
+            }
+              
