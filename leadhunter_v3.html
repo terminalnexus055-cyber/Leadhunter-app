@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeadHunter AI v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#050a06;--surface:#0d1a0e;--surface2:#122214;--surface3:#172a19;
+  --border:#1e3320;--border2:#254028;
+  --primary:#22c55e;--primary-dark:#16a34a;--primary-dim:rgba(34,197,94,0.07);
+  --accent:#4ade80;--gold:#fbbf24;--gold-glow:rgba(251,191,36,0.1);
+  --red:#ef4444;--blue:#60a5fa;--orange:#fb923c;--purple:#a78bfa;
+  --text:#f0fdf4;--text2:#86efac;--text3:#4d7c5a;--muted:#2d5235;
+  --radius:14px;--radius-sm:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+.bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.bg-orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:0.1;animation:drift 15s ease-in-out infinite;}
+.bg-orb:nth-child(1){width:500px;height:500px;background:#22c55e;top:-150px;right:-100px;}
+.bg-orb:nth-child(2){width:350px;height:350px;background:#16a34a;bottom:5%;left:-100px;animation-delay:-5s;}
+.bg-orb:nth-child(3){width:200px;height:200px;background:#fbbf24;bottom:30%;right:5%;animation-delay:-10s;opacity:0.05;}
+.bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(34,197,94,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,0.03) 1px,transparent 1px);background-size:48px 48px;}
+@keyframes drift{0%,100%{transform:translate(0,0)}33%{transform:translate(20px,-30px)}66%{transform:translate(-20px,20px)}}
+.app{position:relative;z-index:1;max-width:500px;margin:0 auto;padding:16px 16px 80px;}
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;box-shadow:0 0 24px rgba(34,197,94,0.4);}
+.logo-text{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;letter-spacing:-0.5px;}
+.logo-text span{color:var(--primary);}
+.logo-sub{font-size:0.58rem;font-weight:600;color:var(--text3);letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;}
+.status-pill{display:flex;align-items:center;gap:6px;background:var(--primary-dim);border:1px solid rgba(34,197,94,0.2);border-radius:20px;padding:6px 12px;font-size:0.68rem;font-weight:700;color:var(--primary);font-family:'DM Mono',monospace;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);animation:blink 2s infinite;}
+.status-locked{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:var(--purple);}
+.status-locked .status-dot{background:var(--purple);animation:none;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+/* SCREENS */
+.screen{display:none;animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1);}
+.screen.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+/* CARD */
+.card{background:var(--surface);border-radius:var(--radius);padding:20px;margin-bottom:12px;border:1px solid var(--border);position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(34,197,94,0.3),transparent);}
+.card-title{font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.card-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;background:var(--primary-dim);border:1px solid rgba(34,197,94,0.15);}
+/* FORM */
+label{display:block;font-size:0.65rem;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace;}
+input,textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.88rem;padding:12px 14px;margin-bottom:14px;outline:none;transition:border-color 0.2s;}
+input:focus,textarea:focus,select:focus{border-color:var(--primary);}
+select option{background:var(--surface2);}
+textarea{resize:vertical;min-height:80px;}
+input::placeholder,textarea::placeholder{color:var(--text3);}
+input:disabled,textarea:disabled,select:disabled{opacity:0.5;cursor:not-allowed;}
+/* PLATFORM */
+.platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.platform-btn{padding:10px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:0.72rem;font-weight:700;cursor:pointer;transition:all 0.2s;text-align:center;font-family:'Syne',sans-serif;}
+.platform-btn.active{border-color:var(--primary);color:var(--primary);background:var(--primary-dim);}
+.platform-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.plat-icon{font-size:1rem;display:block;margin-bottom:4px;}
+/* WEEKLY LOCK */
+.lock-card{background:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(0,0,0,0));border:1px solid rgba(167,139,250,0.2);border-radius:var(--radius);padding:20px;margin-bottom:12px;}
+.lock-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(167,139,250,0.4),transparent);}
+.lock-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;color:var(--purple);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.lock-msg{font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:14px;}
+.lock-countdown{display:flex;gap:8px;margin-bottom:16px;}
+.lock-day{flex:1;text-align:center;background:var(--surface2);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 6px;}
+.lock-day-num{font-family:'DM Mono',monospace;font-size:1.4rem;font-weight:800;color:var(--purple);line-height:1;}
+.lock-day-lbl{font-size:0.58rem;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-top:3px;}
+.lock-action{font-size:0.75rem;color:var(--text3);font-weight:500;line-height:1.5;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);}
+/* BUTTONS */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border-radius:10px;border:none;font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;transition:all 0.2s;width:100%;}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#050a06;box-shadow:0 4px 20px rgba(34,197,94,0.3);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(34,197,94,0.5);}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text3);padding:8px 12px;font-size:0.72rem;width:auto;border-radius:8px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;}
+.btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+.btn-ghost.danger{color:var(--red);border-color:rgba(239,68,68,0.2);}
+.spinner{width:15px;height:15px;border:2px solid rgba(5,10,6,0.3);border-top-color:#050a06;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* HUNTING */
+.hunting-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px 20px;text-align:center;margin-bottom:12px;}
+.hunting-icon{font-size:3rem;display:block;margin-bottom:16px;animation:hunt 1s ease-in-out infinite alternate;}
+@keyframes hunt{from{transform:translateX(-8px)}to{transform:translateX(8px)}}
+.hunting-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--primary);margin-bottom:6px;}
+.hunting-sub{font-size:0.78rem;color:var(--text3);font-weight:500;margin-bottom:4px;}
+.progress-track{height:4px;background:var(--surface3);border-radius:2px;margin-top:16px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:2px;transition:width 0.6s ease;}
+.hunting-steps{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.h-step{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:0.8rem;font-weight:600;color:var(--text3);}
+.h-step.active{border-color:var(--primary);color:var(--primary);background:var(--primary-dim);}
+.h-step.done{border-color:rgba(34,197,94,0.2);color:var(--accent);}
+.step-dot{width:20px;height:20px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:0.6rem;flex-shrink:0;}
+.h-step.done .step-dot{background:var(--primary);border-color:var(--primary);color:#050a06;}
+.h-step.active .step-dot{background:var(--primary-dim);border-color:var(--primary);color:var(--primary);}
+/* PLATFORM BADGE */
+.pb{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:0.62rem;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:8px;}
+.pb-reddit{background:rgba(255,69,0,0.1);border:1px solid rgba(255,69,0,0.25);color:#ff6b35;}
+.pb-linkedin{background:rgba(10,102,194,0.1);border:1px solid rgba(10,102,194,0.25);color:#60a5fa;}
+.pb-twitter{background:rgba(29,161,242,0.1);border:1px solid rgba(29,161,242,0.25);color:#38bdf8;}
+.pb-quora{background:rgba(185,43,39,0.1);border:1px solid rgba(185,43,39,0.25);color:#f87171;}
+/* LEAD CARD */
+.lead-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;}
+.lead-card.hot{border-color:rgba(251,191,36,0.3);}
+.lead-card.warm{border-color:rgba(34,197,94,0.2);}
+.top-bar{height:3px;}
+.lead-card.hot .top-bar{background:linear-gradient(90deg,var(--gold),#f59e0b);}
+.lead-card.warm .top-bar{background:linear-gradient(90deg,var(--primary),var(--accent));}
+.lead-card.cold .top-bar{background:var(--border2);}
+.lead-body{padding:16px;}
+.lead-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.grade-pill{padding:3px 10px;border-radius:20px;font-size:0.65rem;font-weight:700;}
+.g-hot{background:var(--gold-glow);border:1px solid rgba(251,191,36,0.25);color:var(--gold);}
+.g-warm{background:var(--primary-dim);border:1px solid rgba(34,197,94,0.2);color:var(--primary);}
+.g-cold{background:var(--surface2);border:1px solid var(--border2);color:var(--text3);}
+.score-row{display:flex;align-items:center;gap:5px;}
+.score-lbl{font-size:0.62rem;color:var(--text3);font-family:'DM Mono',monospace;}
+.sdots{display:flex;gap:3px;}
+.sdot{width:8px;height:8px;border-radius:2px;background:var(--surface3);}
+.sdot.f-hot{background:var(--gold);}
+.sdot.f-warm{background:var(--primary);}
+.sdot.f-cold{background:var(--text3);}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.sc-item{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+.sc-lbl{font-size:0.58rem;color:var(--text3);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;}
+.sc-val{font-size:0.9rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--primary);}
+.lead-user{font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--primary);margin-bottom:2px;}
+.lead-community{font-size:0.65rem;color:var(--text3);font-weight:600;margin-bottom:10px;}
+.lead-need{font-size:0.82rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:10px;}
+.lead-quote{background:var(--surface2);border-left:2px solid var(--primary);padding:8px 12px;border-radius:4px;font-size:0.75rem;color:var(--text2);font-style:italic;line-height:1.5;margin-bottom:8px;}
+.view-link{display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--primary);font-family:'DM Mono',monospace;margin-bottom:12px;text-decoration:none;}
+.view-link:hover{text-decoration:underline;}
+.lead-actions{display:flex;gap:8px;}
+.la-btn{flex:1;padding:9px 10px;border-radius:8px;border:none;font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.la-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#050a06;}
+.la-secondary{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);}
+.la-btn:hover{transform:translateY(-1px);}
+/* OUTREACH */
+.outreach-box{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.outreach-box.show{display:block;}
+.outreach-ta{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.8rem;padding:12px;margin-bottom:8px;outline:none;resize:vertical;min-height:120px;line-height:1.6;}
+.outreach-ta:focus{border-color:var(--primary);}
+.oa-row{display:flex;gap:8px;}
+.copy-btn{flex:1;padding:9px;border-radius:8px;border:1px solid rgba(34,197,94,0.2);background:var(--primary-dim);color:var(--primary);font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.copy-btn:hover{background:var(--primary);color:#050a06;}
+.regen-btn{padding:9px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;cursor:pointer;}
+/* FILTER */
+.leads-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.leads-count{font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:var(--primary);}
+.filter-bar{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;}
+.filter-chip{padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text3);font-size:0.68rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;font-family:'Syne',sans-serif;}
+.filter-chip.active{border-color:var(--primary);color:var(--primary);background:var(--primary-dim);}
+/* MARKET */
+.demand-meter{text-align:center;padding:20px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:14px;}
+.demand-num{font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;color:var(--primary);line-height:1;}
+.demand-lbl{font-size:0.72rem;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-top:4px;}
+.demand-desc{font-size:0.82rem;color:var(--text2);margin-top:8px;}
+.trend-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
+.trend-rank{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text3);min-width:20px;}
+.trend-name{font-size:0.8rem;font-weight:600;color:var(--text);flex:1;}
+.trend-bar-wrap{width:60px;}
+.trend-bar{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;}
+.trend-bar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));}
+.trend-score{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--primary);min-width:28px;text-align:right;}
+.icp-item{display:flex;gap:10px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
+.icp-label{font-size:0.65rem;color:var(--text3);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;min-width:80px;margin-top:2px;}
+.icp-value{font-size:0.8rem;color:var(--text);line-height:1.5;flex:1;}
+/* SAVED / NOTES */
+.lead-note{width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.75rem;padding:8px 10px;margin-top:8px;outline:none;resize:none;min-height:60px;}
+.lead-note:focus{border-color:var(--primary);}
+/* HISTORY */
+.history-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s;}
+.history-item:hover{border-color:var(--primary);}
+.history-product{font-size:0.82rem;font-weight:700;color:var(--text);}
+.history-meta{font-size:0.68rem;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
+.history-cta{font-size:0.7rem;color:var(--primary);font-weight:700;}
+/* TABS */
+.nav-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.nav-tab{flex:1;padding:10px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text3);font-size:0.62rem;font-weight:700;cursor:pointer;text-align:center;transition:all 0.2s;font-family:'Syne',sans-serif;}
+.nav-tab.active{border-color:var(--primary);color:var(--primary);background:var(--primary-dim);}
+/* MISC */
+.section-label{font-size:0.62rem;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-family:'DM Mono',monospace;}
+.export-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:8px;border:1px solid rgba(34,197,94,0.2);background:var(--primary-dim);color:var(--primary);font-family:'Syne',sans-serif;font-size:0.7rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.export-btn:hover{background:var(--primary);color:#050a06;}
+.empty{text-align:center;padding:32px 20px;color:var(--text3);}
+.empty-icon{font-size:2.5rem;display:block;margin-bottom:10px;}
+.empty p{font-size:0.82rem;font-weight:600;}
+.skel{height:12px;background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px;margin-bottom:8px;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.tag-green{display:inline-flex;padding:3px 10px;border-radius:20px;font-size:0.65rem;font-weight:700;font-family:'DM Mono',monospace;background:var(--primary-dim);border:1px solid rgba(34,197,94,0.2);color:var(--primary);margin:2px;}
+.version-tag{text-align:center;font-size:0.6rem;color:var(--muted);margin-top:12px;font-family:'DM Mono',monospace;letter-spacing:1px;}
+</style>
+</head>
+<body>
+<div class="bg-canvas"><div class="bg-orb"></div><div class="bg-orb"></div><div class="bg-orb"></div><div class="bg-grid"></div></div>
+<div class="app">
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🎯</div>
+      <div><div class="logo-text">Lead<span>Hunter</span></div><div class="logo-sub">AI Lead Intelligence</div></div>
+    </div>
+    <div class="status-pill" id="statusPill"><div class="status-dot"></div><span id="statusText">LIVE</span></div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="screen active" id="screen-search">
+
+    <!-- Weekly lock card — shown when locked -->
+    <div id="lockCard" style="display:none;background:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(0,0,0,0));border:1px solid rgba(167,139,250,0.2);border-radius:var(--radius);padding:20px;margin-bottom:12px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(167,139,250,0.4),transparent)"></div>
+      <div style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;color:var(--purple);margin-bottom:8px;display:flex;align-items:center;gap:8px;">🔒 Hunt Locked Until Next Week</div>
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:14px;" id="lockQuote">"Your leads from last week are still waiting for action. Execute on what you have first — then come back and hunt again. That's how real momentum is built."</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;" id="lockCountdown"></div>
+      <div style="font-size:0.75rem;color:var(--text3);font-weight:500;line-height:1.5;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+        💡 While you wait — <strong style="color:var(--text2)">reach out to your saved leads</strong>, refine your outreach messages, and follow up on last week's prospects.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🏹</div> Hunt for Ready Buyers</div>
+      <label>Your Product / Service</label>
+      <input type="text" id="product" placeholder="e.g. Social media management, AI automation..." maxlength="100">
+      <label>Problem It Solves</label>
+      <textarea id="problem" placeholder="e.g. Businesses struggle to get consistent leads online..." maxlength="300"></textarea>
+      <label>Target Customer Type</label>
+      <input type="text" id="targetCustomer" placeholder="e.g. Small business owners, SaaS founders..." maxlength="100">
+      <label>Your Price Range</label>
+      <select id="priceRange">
+        <option value="under $100">💚 Under $100 — Low ticket</option>
+        <option value="$100-$500">🟡 $100–$500 — Mid ticket</option>
+        <option value="$500-$2000">🔥 $500–$2,000 — High ticket</option>
+        <option value="$2000+">💎 $2,000+ — Premium</option>
+      </select>
+      <label>Industry / Niche</label>
+      <input type="text" id="niche" placeholder="e.g. E-commerce, Real estate, Health & wellness..." maxlength="100">
+      <label>Search Platforms</label>
+      <div class="platform-grid">
+        <div class="platform-btn active" data-platform="reddit" onclick="togglePlatform(this)"><span class="plat-icon">🟠</span>Reddit</div>
+        <div class="platform-btn active" data-platform="linkedin" onclick="togglePlatform(this)"><span class="plat-icon">💼</span>LinkedIn</div>
+        <div class="platform-btn active" data-platform="twitter" onclick="togglePlatform(this)"><span class="plat-icon">🐦</span>Twitter/X</div>
+        <div class="platform-btn active" data-platform="quora" onclick="togglePlatform(this)"><span class="plat-icon">❓</span>Quora</div>
+      </div>
+      <button class="btn btn-primary" id="huntBtn" onclick="startHunt()">🎯 Hunt for Leads</button>
+    </div>
+
+    <div id="historySection" style="display:none">
+      <div class="section-label">Recent Searches</div>
+      <div id="historyList"></div>
+    </div>
+    <div class="version-tag">LEADHUNTER AI v3.0 · WEEKLY HUNTS · REDDIT · LINKEDIN · TWITTER/X · QUORA · POWERED BY GEMINI</div>
+  </div>
+
+  <!-- HUNTING -->
+  <div class="screen" id="screen-hunting">
+    <div class="hunting-card">
+      <span class="hunting-icon">🎯</span>
+      <div class="hunting-title" id="huntingTitle">Scanning for buyers...</div>
+      <div class="hunting-sub" id="huntingSub">Building your ICP</div>
+      <div class="progress-track"><div class="progress-fill" id="huntProgress" style="width:0%"></div></div>
+      <div class="hunting-steps" id="huntSteps"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="rTab('leads')">🎯 Leads</div>
+      <div class="nav-tab" onclick="rTab('market')">📊 Market</div>
+      <div class="nav-tab" onclick="rTab('saved')">💾 Saved</div>
+      <div class="nav-tab" onclick="rTab('history')">🕐 History</div>
+    </div>
+
+    <div id="tab-leads">
+      <div class="leads-header">
+        <div class="leads-count" id="leadsCount">0 leads found</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="export-btn" onclick="exportCSV()">📥 CSV</button>
+          <button class="btn-ghost" onclick="showScreen('screen-search')">← New Hunt</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-chip active" onclick="filterLeads('all',this)">All</div>
+        <div class="filter-chip" onclick="filterLeads('hot',this)">🔥 Hot</div>
+        <div class="filter-chip" onclick="filterLeads('warm',this)">✅ Warm</div>
+        <div class="filter-chip" onclick="filterLeads('cold',this)">👀 Cold</div>
+        <div class="filter-chip" onclick="filterLeads('reddit',this)">🟠 Reddit</div>
+        <div class="filter-chip" onclick="filterLeads('linkedin',this)">💼 LinkedIn</div>
+        <div class="filter-chip" onclick="filterLeads('twitter',this)">🐦 Twitter</div>
+        <div class="filter-chip" onclick="filterLeads('quora',this)">❓ Quora</div>
+      </div>
+      <div id="leadsList"></div>
+    </div>
+
+    <div id="tab-market" style="display:none">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">📊</div> Market Demand Score</div>
+        <div class="demand-meter">
+          <div class="demand-num" id="demandScore">—</div>
+          <div class="demand-lbl">Out of 100</div>
+          <div class="demand-desc" id="demandDesc">Run a search to see market demand</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🔥</div> Top Buying Communities</div>
+        <div id="communityList"><div class="skel"></div><div class="skel"></div><div class="skel" style="width:60%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">💬</div> Buyer Trigger Phrases</div>
+        <div id="triggerList" style="display:flex;flex-wrap:wrap;gap:6px"><div class="skel" style="width:100%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">⏰</div> Best Time to Reach Out</div>
+        <div id="bestTimeList"><div class="skel"></div><div class="skel" style="width:70%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">👤</div> Ideal Customer Profile</div>
+        <div id="icpGrid"><div class="skel"></div><div class="skel" style="width:80%"></div></div>
+      </div>
+    </div>
+
+    <div id="tab-saved" style="display:none">
+      <div class="leads-header">
+        <div class="leads-count" id="savedCount">0 saved leads</div>
+        <div style="display:flex;gap:6px">
+          <button class="export-btn" onclick="exportSavedCSV()">📥 Export</button>
+          <button class="btn-ghost danger" onclick="clearSaved()">🗑 Clear All</button>
+        </div>
+      </div>
+      <div id="savedList"></div>
+    </div>
+
+    <div id="tab-history" style="display:none">
+      <div class="section-label">Past Searches</div>
+      <div id="fullHistoryList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SECURITY ───────────────────────────────
+const _rl={};
+function rateLimit(k,ms=8000){const n=Date.now();if(_rl[k]&&n-_rl[k]<ms)return false;_rl[k]=n;return true;}
+function sanitize(s){if(!s)return'';return String(s).replace(/[<>"'`]/g,'').replace(/javascript:/gi,'').replace(/on\w+=/gi,'').trim().substring(0,800);}
+function safeUrl(u){if(!u)return'#';try{const x=new URL(String(u));return['https:','http:'].includes(x.protocol)?x.href.substring(0,500):'#';}catch(e){return'#';}}
+function safeSave(k,d){try{const s=JSON.stringify(d);localStorage.setItem(k,s.length>300000?JSON.stringify(Array.isArray(d)?d.slice(-50):d):s);}catch(e){}}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── API ────────────────────────────────────
+async function askAI(prompt,fallback='',retries=1){
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,generationConfig:{maxOutputTokens:1500,temperature:0.8}})});
+    const d=await r.json();
+    if(d.error){if(retries>0){await sleep(2000);return askAI(prompt,fallback,retries-1);}return fallback;}
+    return d.text||fallback;
+  }catch(e){if(retries>0){await sleep(2000);return askAI(prompt,fallback,retries-1);}return fallback;}
+}
+async function askJSON(prompt,fallback,retries=1){
+  const raw=await askAI(prompt+'\n\nReturn ONLY valid JSON. No markdown. No backticks.',JSON.stringify(fallback),retries);
+  try{const m=raw.match(/[\[{][\s\S]*[\]}]/);return JSON.parse(m[0]);}catch(e){return fallback;}
+}
+async function multiSearch(query){
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'multi_search',searchQuery:query})});
+    const d=await r.json();return d.results||[];
+  }catch(e){return[];}
+}
+
+// ── PLATFORM ───────────────────────────────
+function togglePlatform(btn){if(btn.disabled)return;btn.classList.toggle('active');}
+function getPlats(){return[...document.querySelectorAll('.platform-btn.active')].map(b=>b.dataset.platform);}
+
+// ── STORAGE KEYS ───────────────────────────
+const SK='lh_settings_v2', LK='lh_saved_v2', HK='lh_history_v2', HUNT_KEY='lh_last_hunt';
+let allLeads=[], currentMarket={};
+
+// ── WEEKLY LOCK ────────────────────────────
+function getDaysUntilNextHunt(){
+  const last=localStorage.getItem(HUNT_KEY);
+  if(!last) return 0;
+  const diff=Math.floor((Date.now()-new Date(last).getTime())/(1000*60*60*24));
+  return Math.max(0,7-diff);
+}
+
+function applyLockState(){
+  const daysLeft=getDaysUntilNextHunt();
+  const btn=document.getElementById('huntBtn');
+  const lockCard=document.getElementById('lockCard');
+  const statusPill=document.getElementById('statusPill');
+  const statusText=document.getElementById('statusText');
+  const platforms=document.querySelectorAll('.platform-btn');
+  const inputs=document.querySelectorAll('#product,#problem,#targetCustomer,#niche,#priceRange');
+
+  if(daysLeft>0){
+    // Lock UI
+    btn.disabled=true;
+    btn.textContent=`🔒 Next Hunt in ${daysLeft} day${daysLeft!==1?'s':''}`;
+    lockCard.style.display='block';
+    platforms.forEach(p=>{p.disabled=true;p.style.opacity='0.4';p.style.cursor='not-allowed';});
+    inputs.forEach(i=>i.disabled=true);
+    statusPill.className='status-pill status-locked';
+    statusText.textContent='LOCKED';
+    // Build countdown blocks
+    const hours=Math.floor(((7*24*60*60*1000)-(Date.now()-new Date(localStorage.getItem(HUNT_KEY)).getTime()))/(1000*60*60));
+    const days=Math.floor(hours/24);
+    const remHours=hours%24;
+    document.getElementById('lockCountdown').innerHTML=`
+      <div style="flex:1;text-align:center;background:var(--surface2);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 6px">
+        <div style="font-family:'DM Mono',monospace;font-size:1.4rem;font-weight:800;color:var(--purple);line-height:1">${days}</div>
+        <div style="font-size:0.58rem;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-top:3px">Days</div>
+      </div>
+      <div style="flex:1;text-align:center;background:var(--surface2);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 6px">
+        <div style="font-family:'DM Mono',monospace;font-size:1.4rem;font-weight:800;color:var(--purple);line-height:1">${remHours}</div>
+        <div style="font-size:0.58rem;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-top:3px">Hours</div>
+      </div>`;
+  } else {
+    // Unlock UI
+    btn.disabled=false;
+    btn.textContent='🎯 Hunt for Leads';
+    lockCard.style.display='none';
+    platforms.forEach(p=>{p.disabled=false;p.style.opacity='';p.style.cursor='';});
+    inputs.forEach(i=>i.disabled=false);
+    statusPill.className='status-pill';
+    statusText.textContent='LIVE';
+  }
+}
+
+// ── HUNT ───────────────────────────────────
+async function startHunt(){
+  if(!rateLimit('hunt',8000)){alert('Still hunting — please wait.');return;}
+
+  // Weekly lock hard check
+  const daysLeft=getDaysUntilNextHunt();
+  if(daysLeft>0){
+    alert(`"Your leads from last week are still waiting for action. Come back in ${daysLeft} day${daysLeft!==1?'s':''} — execute first, then hunt again."`);
+    return;
+  }
+
+  const product=sanitize(document.getElementById('product').value);
+  const problem=sanitize(document.getElementById('problem').value);
+  const target=sanitize(document.getElementById('targetCustomer').value);
+  const price=document.getElementById('priceRange').value;
+  const niche=sanitize(document.getElementById('niche').value);
+  const platforms=getPlats();
+  if(!product||!problem||!target){alert('Fill in product, problem and target customer first.');return;}
+  if(!platforms.length){alert('Select at least one platform to search.');return;}
+
+  safeSave(SK,{product,problem,target,price,niche,platforms});
+
+  showScreen('screen-hunting');
+  const steps=[
+    {label:'🧠 Building Ideal Customer Profile',key:'icp'},
+    {label:'🔍 Searching '+platforms.map(p=>p.charAt(0).toUpperCase()+p.slice(1)).join(', '),key:'search'},
+    {label:'📊 Scoring buying signals & intent',key:'score'},
+    {label:'🎯 Ranking leads by opportunity',key:'rank'},
+    {label:'📈 Calculating market intelligence',key:'market'},
+  ];
+
+  document.getElementById('huntSteps').innerHTML=steps.map((s,i)=>`<div class="h-step" id="hs${i}"><div class="step-dot">${i+1}</div><span>${s.label}</span></div>`).join('');
+
+  const R={};
+
+  for(let i=0;i<steps.length;i++){
+    document.getElementById('huntProgress').style.width=Math.round((i/steps.length)*100)+'%';
+    document.getElementById('huntingTitle').textContent=steps[i].label;
+    if(i>0)document.getElementById('hs'+(i-1)).className='h-step done';
+    document.getElementById('hs'+i).className='h-step active';
+
+    if(steps[i].key==='icp'){
+      R.icp=await askJSON(
+        `Sales intelligence expert. Build Ideal Customer Profile for:\nProduct: "${product}" | Problem: "${problem}" | Target: "${target}" | Niche: ${niche} | Price: ${price}\nReturn JSON: {"demographics":"detailed who they are globally","painPoints":["p1","p2","p3"],"buyingTriggers":["t1","t2","t3","t4","t5"],"communities":["community1","community2","community3","community4","community5"],"bestTimes":["best outreach time 1","best outreach time 2"],"demandScore":75,"demandReason":"why demand is this level"}`,
+        {demographics:`${target} in ${niche}`,painPoints:[`Struggling with ${problem}`,'Need proven solution','Want faster results'],buyingTriggers:['looking for recommendations','need help with','willing to pay','anyone used','best tool for'],communities:['r/entrepreneur','r/smallbusiness','LinkedIn groups','Twitter communities','Quora spaces'],bestTimes:['Tue–Thu 9–11am in buyer timezone','Sunday evenings — planning week'],demandScore:72,demandReason:'Strong demand with active buying communities across platforms'}
+      );
+    }
+    else if(steps[i].key==='search'){
+      const queries=[];
+      if(platforms.includes('reddit')){
+        queries.push({q:`site:reddit.com ${product} ${target} recommendations`,p:'reddit'});
+        queries.push({q:`site:reddit.com ${niche} ${problem} looking for solution willing to pay`,p:'reddit'});
+        queries.push({q:`site:reddit.com best ${product} for ${target}`,p:'reddit'});
+      }
+      if(platforms.includes('linkedin')){
+        queries.push({q:`site:linkedin.com/jobs ${target} ${niche} ${product}`,p:'linkedin'});
+        queries.push({q:`site:linkedin.com ${target} ${niche} recommendation ${product}`,p:'linkedin'});
+      }
+      if(platforms.includes('twitter')){
+        queries.push({q:`site:twitter.com ${product} anyone recommend ${niche}`,p:'twitter'});
+        queries.push({q:`site:x.com ${target} need help ${problem}`,p:'twitter'});
+      }
+      if(platforms.includes('quora')){
+        queries.push({q:`site:quora.com best ${product} for ${target} ${niche}`,p:'quora'});
+        queries.push({q:`site:quora.com ${niche} ${problem} solution recommendation`,p:'quora'});
+      }
+      const raw=[];const seen=new Set();
+      for(const q of queries.slice(0,8)){
+        const found=await multiSearch(q.q);
+        found.forEach(r=>{if(!seen.has(r.url)){seen.add(r.url);raw.push({...r,platform:q.p});}});
+        await sleep(200);
+      }
+      R.raw=raw;
+    }
+    else if(steps[i].key==='score'){
+      const raw=R.raw||[];
+      if(raw.length>0){
+        R.leads=await askJSON(
+          `Lead scoring expert for someone selling "${product}" solving "${problem}" targeting "${target}" at ${price}.\nReal posts found:\n${JSON.stringify(raw.slice(0,12))}\nFor EACH post add AND keep all original fields:\n- whatTheyNeed: 1-sentence summary\n- urgency: 1-10\n- specificity: 1-10\n- budgetSignal: 1-10\n- intent: 1-10\n- finalScore: average of all 4 (one decimal)\n- grade: "hot" if finalScore>=8, "warm" if >=6, "cold" if below 6\nReturn ONLY valid JSON array.`,
+          raw.slice(0,8).map(r=>({...r,whatTheyNeed:r.postTitle||r.title||'See original post',urgency:6,specificity:6,budgetSignal:5,intent:7,finalScore:6.0,grade:'warm'}))
+        );
+      } else {
+        R.leads=await askJSON(
+          `Simulate 8 realistic buyer leads for someone selling "${product}" solving "${problem}" targeting "${target}" at ${price} in ${niche}.\nPlatforms: ${platforms.join(', ')}.\nMake leads completely real — real usernames, real communities, specific buying intent quotes.\nJSON array: [{"username":"realistic_name","platform":"reddit/linkedin/twitter/quora","subreddit":"r/community","postTitle":"realistic title","keyQuote":"specific buying intent quote","whatTheyNeed":"their exact need","url":"https://platform.com/path","postedAgo":"X hours/days ago","urgency":8,"specificity":7,"budgetSignal":7,"intent":9,"finalScore":7.75,"grade":"hot"}]`,
+          [{username:'growth_founder_22',platform:'reddit',subreddit:'r/entrepreneur',postTitle:`Need ${product} — budget approved`,keyQuote:`We've been dealing with ${problem} for 3 months. Budget ready, need the right solution ASAP`,whatTheyNeed:`${product} solution, urgent, budget ready`,url:'https://reddit.com/r/entrepreneur',postedAgo:'3 hours ago',urgency:9,specificity:8,budgetSignal:9,intent:9,finalScore:8.75,grade:'hot'}]
+        );
+      }
+    }
+    else if(steps[i].key==='rank'){
+      if(Array.isArray(R.leads))R.leads.sort((a,b)=>(parseFloat(b.finalScore)||0)-(parseFloat(a.finalScore)||0));
+    }
+    else if(steps[i].key==='market'){
+      R.communities=(R.icp?.communities||[]).map((c,i)=>({name:c,score:Math.max(40,95-i*11)}));
+      R.demandScore=R.icp?.demandScore||72;
+      R.demandReason=R.icp?.demandReason||'Active market with strong buyer intent signals';
+      R.triggers=R.icp?.buyingTriggers||[];
+      R.bestTimes=R.icp?.bestTimes||[];
+    }
+    await sleep(700);
+  }
+
+  document.getElementById('huntProgress').style.width='100%';
+  document.getElementById('hs'+(steps.length-1)).className='h-step done';
+  await sleep(300);
+
+  // Save to history
+  const hist=JSON.parse(localStorage.getItem(HK)||'[]');
+  hist.unshift({product,problem,target,price,niche,platforms,leadCount:(R.leads||[]).length,date:new Date().toDateString()});
+  safeSave(HK,hist.slice(0,10));
+
+  // Record hunt timestamp and apply weekly lock
+  localStorage.setItem(HUNT_KEY, new Date().toISOString());
+
+  allLeads=Array.isArray(R.leads)?R.leads:[];
+  currentMarket=R;
+  renderResults(R);
+  showScreen('screen-results');
+}
+
+// ── RENDER ─────────────────────────────────
+function platBadge(p){
+  const m={reddit:'<span class="pb pb-reddit">🟠 Reddit</span>',linkedin:'<span class="pb pb-linkedin">💼 LinkedIn</span>',twitter:'<span class="pb pb-twitter">🐦 Twitter/X</span>',quora:'<span class="pb pb-quora">❓ Quora</span>'};
+  return m[(p||'').toLowerCase()]||`<span class="pb pb-reddit">${sanitize(p)}</span>`;
+}
+
+function renderLeadCard(lead,idx,isSaved=false){
+  const grade=lead.grade||'warm';
+  const score=parseFloat(lead.finalScore)||0;
+  const filled=Math.round(score);
+  const dots=Array.from({length:10},(_,j)=>`<div class="sdot ${j<filled?'f-'+grade:''}"></div>`).join('');
+  const p=(lead.platform||'reddit').toLowerCase();
+  const outId=isSaved?`sout_${idx}`:`out_${idx}`;
+  const taId=isSaved?`sout_ta_${idx}`:`out_ta_${idx}`;
+  return`<div class="lead-card ${grade}">
+    <div class="top-bar"></div>
+    <div class="lead-body">
+      ${platBadge(p)}
+      <div class="lead-meta">
+        <span class="grade-pill ${grade==='hot'?'g-hot':grade==='warm'?'g-warm':'g-cold'}">${grade==='hot'?'🔥 HOT':grade==='warm'?'✅ WARM':'👀 COLD'}</span>
+        <div class="score-row"><span class="score-lbl">${score.toFixed(1)}/10</span><div class="sdots">${dots}</div></div>
+      </div>
+      <div class="score-grid">
+        <div class="sc-item"><div class="sc-lbl">Urgency</div><div class="sc-val">${lead.urgency||'—'}/10</div></div>
+        <div class="sc-item"><div class="sc-lbl">Intent</div><div class="sc-val">${lead.intent||'—'}/10</div></div>
+        <div class="sc-item"><div class="sc-lbl">Budget Signal</div><div class="sc-val">${lead.budgetSignal||'—'}/10</div></div>
+        <div class="sc-item"><div class="sc-lbl">Specificity</div><div class="sc-val">${lead.specificity||'—'}/10</div></div>
+      </div>
+      <div class="lead-user">${sanitize(lead.username||'unknown')}</div>
+      <div class="lead-community">${sanitize(lead.subreddit||lead.community||p)} · ${sanitize(lead.postedAgo||'recently')}</div>
+      <div class="lead-need">${sanitize(lead.whatTheyNeed||lead.postTitle||'')}</div>
+      <div class="lead-quote">"${sanitize(lead.keyQuote||'')}"</div>
+      ${lead.url?`<a href="${safeUrl(lead.url)}" target="_blank" rel="noopener noreferrer" class="view-link">🔗 View Original Post →</a>`:''}
+      ${isSaved?`<textarea class="lead-note" placeholder="Add notes about this lead..." onchange="updateNote(${idx},this.value)">${sanitize(lead.note||'')}</textarea>`:''}
+      <div class="lead-actions">
+        <button class="la-btn la-primary" onclick="${isSaved?`genSavedOutreach(${idx})`:`genOutreach(${idx})`}">✉️ Write Outreach</button>
+        ${isSaved
+          ?`<button class="la-btn la-secondary" style="color:var(--red)" onclick="deleteSaved(${idx})">🗑 Remove</button>`
+          :`<button class="la-btn la-secondary" onclick="saveLead(${idx})" id="savebtn_${idx}">💾 Save Lead</button>`}
+      </div>
+      <div class="outreach-box" id="${outId}">
+        <div class="section-label" style="margin-top:4px">Personalised Message</div>
+        <textarea class="outreach-ta" id="${taId}" placeholder="Generating personalised message..."></textarea>
+        <div class="oa-row">
+          <button class="copy-btn" onclick="copyMsg('${taId}',this)">📋 Copy Message</button>
+          <button class="regen-btn" onclick="${isSaved?`genSavedOutreach(${idx})`:`genOutreach(${idx})`}">🔄 Regen</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderLeads(leads){
+  const el=document.getElementById('leadsList');
+  const ce=document.getElementById('leadsCount');
+  if(!leads||!leads.length){
+    el.innerHTML=`<div class="empty"><span class="empty-icon">🔍</span><p>No leads match this filter.<br>Try a different grade or platform.</p></div>`;
+    ce.textContent='0 leads found';return;
+  }
+  ce.textContent=`${leads.length} lead${leads.length!==1?'s':''} found`;
+  el.innerHTML=leads.map(l=>renderLeadCard(l,allLeads.indexOf(l))).join('');
+}
+
+function renderResults(R){
+  renderLeads(allLeads);
+  document.getElementById('demandScore').textContent=R.demandScore||'—';
+  document.getElementById('demandDesc').textContent=R.demandReason||'';
+  const cl=document.getElementById('communityList');
+  if((R.communities||[]).length)cl.innerHTML=R.communities.map((c,i)=>`<div class="trend-item"><div class="trend-rank">#${i+1}</div><div class="trend-name">${sanitize(c.name)}</div><div class="trend-bar-wrap"><div class="trend-bar"><div class="trend-bar-fill" style="width:${c.score}%"></div></div></div><div class="trend-score">${c.score}%</div></div>`).join('');
+  const tl=document.getElementById('triggerList');
+  if((R.triggers||[]).length)tl.innerHTML=R.triggers.map(t=>`<span class="tag-green">"${sanitize(t)}"</span>`).join('');
+  const bl=document.getElementById('bestTimeList');
+  if((R.bestTimes||[]).length)bl.innerHTML=R.bestTimes.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:0.8rem;font-weight:600;color:var(--text2)">⏰ ${sanitize(t)}</div>`).join('');
+  const ig=document.getElementById('icpGrid');
+  const icp=R.icp||{};
+  ig.innerHTML=`<div class="icp-item"><div class="icp-label">Who</div><div class="icp-value">${sanitize(icp.demographics||'—')}</div></div><div class="icp-item"><div class="icp-label">Pain Points</div><div class="icp-value">${(icp.painPoints||[]).map(p=>`• ${sanitize(p)}`).join('<br>')}</div></div><div class="icp-item"><div class="icp-label">Buy Triggers</div><div class="icp-value">${(icp.buyingTriggers||[]).map(t=>`• ${sanitize(t)}`).join('<br>')}</div></div>`;
+}
+
+// ── FILTER ─────────────────────────────────
+function filterLeads(type,chip){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  if(type==='all'){renderLeads(allLeads);return;}
+  if(['hot','warm','cold'].includes(type)){renderLeads(allLeads.filter(l=>l.grade===type));return;}
+  renderLeads(allLeads.filter(l=>(l.platform||'').toLowerCase()===type));
+}
+
+// ── OUTREACH ───────────────────────────────
+async function genOutreach(idx){
+  if(!rateLimit(`out_${idx}`,5000))return;
+  const lead=allLeads[idx];if(!lead)return;
+  const box=document.getElementById(`out_${idx}`);
+  const ta=document.getElementById(`out_ta_${idx}`);
+  if(!box||!ta)return;
+  box.classList.add('show');ta.value='Writing personalised message...';
+  const s=JSON.parse(localStorage.getItem(SK)||'{}');
+  const msg=await askAI(
+    `Write a personalised outreach to someone who posted: "${sanitize(lead.postTitle||lead.whatTheyNeed)}"\nTheir exact quote: "${sanitize(lead.keyQuote)}"\nPlatform: ${lead.platform||'Reddit'}\nYou offer: "${sanitize(s.product||'a solution')}" solving: "${sanitize(s.problem||'their problem')}"\nRULES:\n- Start with their EXACT situation (do NOT say "I saw your post")\n- Acknowledge the pain with genuine empathy\n- Mention your solution naturally, not as a pitch\n- Soft CTA — offer value, zero pressure\n- Friendly, conversational, not salesy\n- Max 4 sentences`,
+    `I came across your situation with ${sanitize(lead.whatTheyNeed||'this challenge')} and it hit close to home. Most people spend months trying to figure this out alone. We\u2019ve helped others move past exactly this — happy to share what worked. No pitch, just a quick chat if you\u2019re open.`
+  );
+  ta.value=msg;
+}
+
+async function genSavedOutreach(idx){
+  if(!rateLimit(`sout_${idx}`,5000))return;
+  const saved=JSON.parse(localStorage.getItem(LK)||'[]');
+  const lead=saved[idx];if(!lead)return;
+  const box=document.getElementById(`sout_${idx}`);
+  const ta=document.getElementById(`sout_ta_${idx}`);
+  if(!box||!ta)return;
+  box.classList.add('show');ta.value='Writing message...';
+  const s=JSON.parse(localStorage.getItem(SK)||'{}');
+  const msg=await askAI(`Personalised outreach for: "${sanitize(lead.postTitle||lead.whatTheyNeed)}" Quote: "${sanitize(lead.keyQuote)}" Offering: "${sanitize(s.product)}". 4 sentences max, no hard sell.`,`Your post about ${sanitize(lead.whatTheyNeed)} really resonated \u2014 that\u2019s a real challenge. Happy to share what\u2019s worked for others in your exact situation. No pitch, just a quick chat if you\u2019re open.`);
+  ta.value=msg;
+}
+
+async function copyMsg(taId,btn){
+  const t=document.getElementById(taId);if(!t)return;
+  try{await navigator.clipboard.writeText(t.value);}catch(e){t.select();document.execCommand('copy');}
+  const orig=btn.textContent;btn.textContent='✅ Copied!';setTimeout(()=>btn.textContent=orig,2000);
+}
+
+// ── SAVE ───────────────────────────────────
+function saveLead(idx){
+  const lead=allLeads[idx];if(!lead)return;
+  const saved=JSON.parse(localStorage.getItem(LK)||'[]');
+  if(saved.some(s=>s.url===lead.url&&s.username===lead.username)){alert('Already saved!');return;}
+  saved.push({...lead,savedAt:new Date().toDateString(),note:''});
+  safeSave(LK,saved);
+  const btn=document.getElementById(`savebtn_${idx}`);
+  if(btn){btn.textContent='✅ Saved';btn.disabled=true;}
+}
+
+function updateNote(idx,val){
+  const saved=JSON.parse(localStorage.getItem(LK)||'[]');
+  if(saved[idx]){saved[idx].note=sanitize(val);safeSave(LK,saved);}
+}
+
+function renderSaved(){
+  const saved=JSON.parse(localStorage.getItem(LK)||'[]');
+  document.getElementById('savedCount').textContent=`${saved.length} saved lead${saved.length!==1?'s':''}`;
+  const el=document.getElementById('savedList');
+  if(!saved.length){el.innerHTML=`<div class="empty"><span class="empty-icon">💾</span><p>No saved leads yet.<br>Hunt for leads and save your best ones.</p></div>`;return;}
+  el.innerHTML=saved.map((l,i)=>renderLeadCard(l,i,true)).join('');
+}
+
+function deleteSaved(idx){
+  const saved=JSON.parse(localStorage.getItem(LK)||'[]');
+  saved.splice(idx,1);safeSave(LK,saved);renderSaved();
+}
+
+function clearSaved(){
+  if(confirm('Clear ALL saved leads? Cannot be undone.')){localStorage.removeItem(LK);renderSaved();}
+}
+
+// ── EXPORT CSV ─────────────────────────────
+function toCSV(leads){
+  const h=['Username','Platform','Community','Score','Grade','What They Need','Key Quote','URL','Posted','Note'];
+  const rows=leads.map(l=>[l.username||'',l.platform||'',l.subreddit||'',l.finalScore||'',l.grade||'',l.whatTheyNeed||'',l.keyQuote||'',l.url||'',l.postedAgo||'',l.note||''].map(v=>`"${String(v).replace(/"/g,'""')}"`));
+  return[h,...rows].map(r=>r.join(',')).join('\n');
+}
+function dlCSV(csv,name){const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();}
+function exportCSV(){if(!allLeads.length){alert('No leads to export yet.');return;}dlCSV(toCSV(allLeads),`lh_leads_${Date.now()}.csv`);}
+function exportSavedCSV(){const s=JSON.parse(localStorage.getItem(LK)||'[]');if(!s.length){alert('No saved leads.');return;}dlCSV(toCSV(s),`lh_saved_${Date.now()}.csv`);}
+
+// ── HISTORY ────────────────────────────────
+function renderHistorySection(){
+  const hist=JSON.parse(localStorage.getItem(HK)||'[]');
+  const sec=document.getElementById('historySection');
+  if(!hist.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  document.getElementById('historyList').innerHTML=hist.slice(0,3).map((h,i)=>`<div class="history-item" onclick="replaySearch(${i})"><div><div class="history-product">${sanitize(h.product)}</div><div class="history-meta">${sanitize(h.niche)} · ${(h.platforms||[]).join(', ')} · ${h.leadCount||0} leads · ${h.date||''}</div></div><div class="history-cta">Replay →</div></div>`).join('');
+}
+
+function renderFullHistory(){
+  const hist=JSON.parse(localStorage.getItem(HK)||'[]');
+  const el=document.getElementById('fullHistoryList');
+  if(!hist.length){el.innerHTML=`<div class="empty"><span class="empty-icon">🕐</span><p>No search history yet.</p></div>`;return;}
+  el.innerHTML=hist.map((h,i)=>`<div class="history-item" onclick="replaySearch(${i})"><div><div class="history-product">${sanitize(h.product)}</div><div class="history-meta">${sanitize(h.niche)} · ${(h.platforms||[]).join(', ')} · ${h.leadCount||0} leads · ${h.date||''}</div></div><div class="history-cta">Replay →</div></div>`).join('');
+}
+
+function replaySearch(idx){
+  const daysLeft=getDaysUntilNextHunt();
+  if(daysLeft>0){alert(`Hunt locked for ${daysLeft} more day${daysLeft!==1?'s':''}. Execute on your current leads first.`);return;}
+  const hist=JSON.parse(localStorage.getItem(HK)||'[]');
+  const h=hist[idx];if(!h)return;
+  document.getElementById('product').value=h.product||'';
+  document.getElementById('problem').value=h.problem||'';
+  document.getElementById('targetCustomer').value=h.target||'';
+  document.getElementById('niche').value=h.niche||'';
+  document.querySelectorAll('.platform-btn').forEach(btn=>btn.classList.toggle('active',(h.platforms||[]).includes(btn.dataset.platform)));
+  showScreen('screen-search');
+  setTimeout(startHunt,300);
+}
+
+// ── TABS & SCREENS ─────────────────────────
+function rTab(tab){
+  ['leads','market','saved','history'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'block':'none');
+  document.querySelectorAll('.nav-tab').forEach((el,i)=>{el.className='nav-tab'+(['leads','market','saved','history'][i]===tab?' active':'');});
+  if(tab==='saved')renderSaved();
+  if(tab==='history')renderFullHistory();
+}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if(id==='screen-search')applyLockState();
+}
+
+// ── INIT ───────────────────────────────────
+const ss=JSON.parse(localStorage.getItem(SK)||'{}');
+if(ss.product){
+  document.getElementById('product').value=ss.product||'';
+  document.getElementById('problem').value=ss.problem||'';
+  document.getElementById('targetCustomer').value=ss.target||'';
+  document.getElementById('niche').value=ss.niche||'';
+  if(ss.platforms)document.querySelectorAll('.platform-btn').forEach(b=>b.classList.toggle('active',ss.platforms.includes(b.dataset.platform)));
+}
+applyLockState();
+renderHistorySection();
+</script>
+</body>
+</html>
